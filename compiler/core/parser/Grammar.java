@@ -7,27 +7,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import compiler.core.lexer.Lexer;
+import compiler.core.lexer.Pattern;
+import compiler.core.lexer.Token;
+
 public class Grammar {
 
-    private Set<String> terminals;
+    private Set<Token> terminals;
     private Set<String> variables;
     private List<Rule> rules;
     private String startVariable;
+    private List<Pattern> patterns;
 
     private Map<String, Set<String>> firstSets;
     private Map<String, Set<String>> followSets;
     
-    public Grammar(String s) {
-        
-        this(s.split("\n"));
-
-    }
-
-    public Grammar(String[] lines) {
+    public Grammar(String grammar, List<Pattern> patterns) throws Exception {
         rules = new ArrayList<>();
         terminals = new HashSet<>();
         variables = new HashSet<>();
         int line = 0;
+        String[] lines = grammar.split("\n");
+        this.patterns = patterns;
+
+        Set<String> tmpTerminals = new HashSet<>();
 
         for (String s: lines) {
             String[] sides = s.split("->");
@@ -41,7 +44,7 @@ public class Grammar {
 
                 for (String term: terms) {
                     if (!term.equals("epsilon"))
-                        terminals.add(term);
+                    tmpTerminals.add(term);
                 }
 
                 if (line == 0) {
@@ -52,12 +55,24 @@ public class Grammar {
             }
         }
 
-        for (String var: variables) {
-            terminals.remove(var);
+        tmpTerminals.removeAll(variables);
+
+        for (String terminal: tmpTerminals) {
+
+            
+            Lexer l = new Lexer(terminal, patterns);
+            List<Token> tokens = l.tokenize();
+
+            if (tokens.size() != 1) {
+                throw new Exception("invalid terminal \""+ terminal +"\"");
+            }
+
+            terminals.add(tokens.get(0));
         }
 
         firstSets();
         computeFollowSet();
+
     }
 
     private void firstSets() {
@@ -95,7 +110,16 @@ public class Grammar {
         if (index == string.length) {
             return first;
         }
-        if (terminals.contains(string[index]) || string[index].equals("epsilon")) {
+
+
+        for (Token t: terminals) {
+            if (t.getValue().equals(string[index]) || t.getKind().equals(string[index])) {
+                first.add(string[index]);
+                return first;
+            }
+        }
+
+        if (string[index].equals("epsilon")) {
             first.add(string[index]);
             return first;
         }
@@ -164,7 +188,21 @@ public class Grammar {
         return rules;
     }
 
-    public Set<String> getTerminals() {
+    public Map<String, List<Rule>> getRulesByVariable() {
+        Map<String, List<Rule>> rules = new HashMap<>();
+
+        for (String var: variables) {
+            rules.put(var, new ArrayList<>());
+        }
+
+        for (Rule r : this.rules) {
+            rules.get(r.getLeftSide()).add(r);
+        }
+
+        return rules;
+    }
+
+    public Set<Token> getTerminals() {
         return terminals;
     }
 

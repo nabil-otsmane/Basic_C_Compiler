@@ -7,39 +7,55 @@ import java.util.regex.Matcher;
 public class Lexer {
 
     private List<Pattern> matcher;
-    private String[] input;
+    private String input;
+    private int ind;
 
     public Lexer(String input, List<Pattern> matcher) {
-
         this.matcher = matcher;
 
-        this.input = input.split("\s");
+        this.input = input;
+        this.ind = 0;
+    }
+
+    private boolean isEOT() {
+        return ind >= input.length();
+    }
+
+    private Token nextToken() throws Exception {
+        for (Pattern pattern: matcher) {
+            Matcher match = pattern.compile().matcher(input);
+
+            if (match.find(ind) && match.start() == ind) {
+                int tmp = ind;
+                ind = match.end();
+
+                return new Token(pattern.getKind(), input.substring(tmp, ind).trim());
+            }
+        }
+
+        throw new Exception("no match found for the string: " + input + " at index: " + ind);
+        
+    }
+
+    private void skipWhitespaces() {
+
+        while (!isEOT()) {
+            if (input.charAt(ind) == ' ' || input.charAt(ind) == '\t' || input.charAt(ind) == '\n') {
+                ind++;
+            } else {
+                break;
+            }
+        }
     }
 
     public List<Token> tokenize() throws Exception {
 
         List<Token> tokens = new ArrayList<>();
 
-        for (String word: input) {
-            if (word.isEmpty())
-                continue;
+        while (!isEOT()) {
+            skipWhitespaces();
 
-            while (!word.isEmpty()) {
-                boolean found = false;
-                for (Pattern pattern: matcher) {
-                    Matcher match = pattern.compile().matcher(word);
-                    
-                    if (match.find() && match.start() == 0) {
-                        tokens.add(new Token(pattern.getKind(), word.substring(0, match.end())));
-
-                        found = true;
-                        word = word.substring(match.end());
-                    }
-                }
-                if (!found) {
-                    throw new Exception("no match found for the string: " + word);
-                }
-            }
+            tokens.add(nextToken());
         }
 
         return tokens;

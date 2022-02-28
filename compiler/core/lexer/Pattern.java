@@ -17,5 +17,10 @@ public class Pattern {
     public String getKind() {
         return kind;
     }
+
+    @Override
+    public String toString() {
+        return "RegEx: " + kind + " -> " + pattern;
+    }
     
 }
